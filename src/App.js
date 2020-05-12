@@ -1,26 +1,69 @@
-import React from 'react';
-import logo from './logo.svg';
-import './App.css';
+import React, { Suspense, useEffect } from "react";
+import Layout from "./hoc/Layout/Layout";
+import BurgerBuilder from "./containers/BurgerBuilder/BurgerBuilder";
+import { Route, Switch, Redirect } from "react-router-dom";
 
-function App() {
+import Logout from "./containers/Auth/Logout/Logout";
+import { connect } from "react-redux";
+import { authCheckState } from "./store/actions";
+import Spinner from "./components/UI/Spinner/Spinner";
+
+const Orders = React.lazy(() => import("./containers/Orders/Orders"));
+const Auth = React.lazy(() => import("./containers/Auth/Auth"));
+const Checkout = React.lazy(() => import("./containers/Checkout/Checkout"));
+
+const App = props => {
+  const { onTryAutosignup } = props;
+
+  useEffect(() => {
+    onTryAutosignup();
+  }, [onTryAutosignup]);
+
   return (
-    <div className="App">
-      <header className="App-header">
-        <img src={logo} className="App-logo" alt="logo" />
-        <p>
-          Edit <code>src/App.js</code> and save to reload.
-        </p>
-        <a
-          className="App-link"
-          href="https://reactjs.org"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          Learn React
-        </a>
-      </header>
+    <div>
+      <Layout>
+        <Switch>
+          <Route
+            path="/auth"
+            render={props => (
+              <Suspense fallback={<Spinner />}>
+                <Auth {...props} />
+              </Suspense>
+            )}
+          />
+          <Route path="/logout" component={Logout} />
+          <Route
+            path="/checkout"
+            render={props => (
+              <Suspense fallback={<Spinner />}>
+                <Checkout {...props} />
+              </Suspense>
+            )}
+          />
+          {props.isAuthenticated && (
+            <Route
+              path="/orders"
+              render={props => (
+                <Suspense fallback={<Spinner />}>
+                  <Orders {...props} />
+                </Suspense>
+              )}
+            />
+          )}
+          <Route path="/" exact component={BurgerBuilder} />
+          <Redirect to="/" />
+        </Switch>
+      </Layout>
     </div>
   );
-}
+};
 
-export default App;
+const mapStateToProps = state => ({
+  isAuthenticated: !!state.auth.token
+});
+
+const mapDispatchToProps = dispatch => ({
+  onTryAutosignup: () => dispatch(authCheckState())
+});
+
+export default connect(mapStateToProps, mapDispatchToProps)(App);
